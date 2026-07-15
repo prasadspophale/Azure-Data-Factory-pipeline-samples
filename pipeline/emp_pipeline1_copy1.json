@@ -1,0 +1,281 @@
+{
+	"name": "emp_pipeline1_copy1",
+	"properties": {
+		"activities": [
+			{
+				"name": "GM_EMPLOYEE_FILE",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DelimitedText1",
+						"type": "DatasetReference",
+						"parameters": {
+							"FileName": "employees.csv",
+							"SourceFolder": "landing"
+						}
+					},
+					"fieldList": [
+						"exists"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "FAIL_FILE_NOT_FOUND",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "GM_EMPLOYEE_FILE",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@activity('GM_EMPLOYEE_FILE').output.exists",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Fail1",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "Employee source file not found in Landing container.",
+								"errorCode": "404"
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "CPY_LANDING_TO_BRONZE",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "EmpID",
+												"type": "String",
+												"physicalType": "String"
+											},
+											"sink": {
+												"name": "EmpID",
+												"type": "String",
+												"physicalType": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Name",
+												"type": "String",
+												"physicalType": "String"
+											},
+											"sink": {
+												"name": "Name",
+												"type": "String",
+												"physicalType": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Department",
+												"type": "String",
+												"physicalType": "String"
+											},
+											"sink": {
+												"name": "Department",
+												"type": "String",
+												"physicalType": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Salary",
+												"type": "String",
+												"physicalType": "String"
+											},
+											"sink": {
+												"name": "Salary",
+												"type": "String",
+												"physicalType": "String"
+											}
+										}
+									],
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DelimitedText1",
+									"type": "DatasetReference",
+									"parameters": {
+										"FileName": {
+											"value": "@pipeline().parameters.FileName",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DelimitedText2",
+									"type": "DatasetReference",
+									"parameters": {
+										"BronzeFolder": {
+											"value": "@pipeline().parameters.BronzeFolder",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@pipeline().parameters.FileName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "NB_BRONZE_TO_SILVER",
+							"type": "DatabricksNotebook",
+							"dependsOn": [
+								{
+									"activity": "CPY_LANDING_TO_BRONZE",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebookPath": "/Users/prasadspophale@yahoo.com/NB_BRONZE_TO_SILVER"
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_Databricks",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "NB_RUN_SILVER_TO_GOLD",
+							"type": "DatabricksNotebook",
+							"dependsOn": [
+								{
+									"activity": "NB_BRONZE_TO_SILVER",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebookPath": "/Users/prasadspophale@yahoo.com/NB_RUN_SILVER_TO_GOLD"
+							},
+							"linkedServiceName": {
+								"referenceName": "LS_Databricks",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"FileName": {
+				"type": "string",
+				"defaultValue": "employees.csv"
+			},
+			"ContainerName": {
+				"type": "string",
+				"defaultValue": "prasadadls001"
+			},
+			"SourceFolder": {
+				"type": "string",
+				"defaultValue": "landing"
+			},
+			"BronzeFolder": {
+				"type": "string",
+				"defaultValue": "dsbronze"
+			},
+			"SilverFolder": {
+				"type": "string",
+				"defaultValue": "dssilver"
+			},
+			"GoldFolder": {
+				"type": "string",
+				"defaultValue": "dsgold"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-07-06T14:11:38Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

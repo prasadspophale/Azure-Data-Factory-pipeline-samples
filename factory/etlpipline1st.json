@@ -1,0 +1,15 @@
+{
+	"name": "etlpipline1st",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "southindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "417ef03e-07fb-4c08-a50a-83d2338bdc90",
+		"tenantId": "682e55b2-8fa9-4e5e-a870-38d1a87cf7ca"
+	}
+}
